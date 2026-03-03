@@ -5,7 +5,8 @@ import org.webrtc.*
 
 class WebRTCManager(
     private val context: Context,
-    private val localView: SurfaceViewRenderer
+    private val localView: SurfaceViewRenderer,
+    private var videoCapturer: CameraVideoCapturer? = null
 ) {
 
     private lateinit var peerConnectionFactory: PeerConnectionFactory
@@ -13,6 +14,8 @@ class WebRTCManager(
     private lateinit var videoSource: VideoSource
     private lateinit var videoTrack: VideoTrack
     private lateinit var peerConnection: PeerConnection
+
+    private var isFrontCamera = true
 
     fun initialize() {
 
@@ -39,8 +42,24 @@ class WebRTCManager(
         createOffer()
     }
 
+    fun switchCamera() {
+        videoCapturer?.let {
+            if (it is CameraVideoCapturer) {
+                it.switchCamera(null)
+                isFrontCamera = !isFrontCamera
+                println("🔄 Switched camera. Front = $isFrontCamera")
+            }
+        }
+    }
+
     private fun startCamera() {
-        val videoCapturer = createCameraCapturer()
+
+        videoCapturer = createCameraCapturer(isFrontCamera)
+
+        if (videoCapturer == null) {
+            println("❌ Camera capturer is NULL")
+            return
+        }
 
         videoSource = peerConnectionFactory.createVideoSource(false)
 
@@ -108,13 +127,18 @@ class WebRTCManager(
         }, constraints)
     }
 
-    private fun createCameraCapturer(): VideoCapturer? {
+    private fun createCameraCapturer(front: Boolean): CameraVideoCapturer? {
         val enumerator = Camera2Enumerator(context)
+
         for (deviceName in enumerator.deviceNames) {
-            if (enumerator.isFrontFacing(deviceName)) {
-                return enumerator.createCapturer(deviceName, null)
+            if (front && enumerator.isFrontFacing(deviceName)) {
+                return enumerator.createCapturer(deviceName, null) as CameraVideoCapturer
+            }
+            if (!front && enumerator.isBackFacing(deviceName)) {
+                return enumerator.createCapturer(deviceName, null) as CameraVideoCapturer
             }
         }
+
         return null
     }
 }

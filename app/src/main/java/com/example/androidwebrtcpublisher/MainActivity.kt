@@ -24,6 +24,10 @@ class MainActivity : ComponentActivity() {
 
         webRTCManager = WebRTCManager(this, binding.localView)
         webRTCManager.initialize()
+
+        binding.btnSwitchCamera.setOnClickListener {
+            webRTCManager.switchCamera()
+        }
     }
 
     private fun requestPermissions() {
